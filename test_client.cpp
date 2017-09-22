@@ -50,6 +50,8 @@ namespace ig {
         ig::Metrics *metrics_;
         proton::connection_options co;
 
+        ig::connection_factory *connection_factory_;
+
         PropertyUtil::PropertyMapT properties_;
     public:
         test_client(const PropertyUtil::PropertyMapT properties)
@@ -105,12 +107,13 @@ namespace ig {
             }
             connect_options(properties_, co);
 
+            connection_factory_ = new ig::connection_factory(url, co, metrics_);
         }
 
         void run() {
-            ig::connection connection(url, co, metrics_);
+            ig::connection *connection = connection_factory_ -> createConnection();
 
-            proton::container container(connection);
+            proton::container container(*connection);
             std::thread container_thread([&]() { container.run(); });
 
             bool run = true;
@@ -118,7 +121,7 @@ namespace ig {
             std::vector<std::thread*> consumers;
             for (int i = 0; i < test_no_consumers; i++) {
                 std::thread *receiver = new std::thread([&]() {
-                    auto consumer = connection.create_consumer(queue);
+                    auto consumer = connection -> create_consumer(queue);
                     while (run) {
                         auto msg = consumer->receive();
                         //OUT(std::cout << "received \"" << msg.body() << '"' << std::endl);
@@ -131,7 +134,7 @@ namespace ig {
             std::vector<std::thread*> producers;
             for (int i = 0; i < test_no_producers; i++) {
                 std::thread *sender = new std::thread([&]() {
-                    auto producer = connection.create_producer(address);
+                    auto producer = connection -> create_producer(address);
                     while (run) {
                         proton::message msg(message_text);
                         producer->send(msg);
@@ -167,8 +170,14 @@ namespace ig {
 
 
 
-            connection.close();
+            connection -> close();
             container_thread.join();
+            free(connection);
+        }
+
+        void destroy() {
+            free(connection_factory_);
+            free(metrics_);
         }
 
         void report_metrics(ig::Metrics *metrics) {
@@ -275,6 +284,7 @@ namespace ig {
                 out.push_back( substr );
             }
         }
+
     };
 }
 
@@ -292,4 +302,5 @@ int main(int argc, const char **argv) {
 
     ig::test_client test_client(properties);
     test_client.run();
+    test_client.destroy();
 }
