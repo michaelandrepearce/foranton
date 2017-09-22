@@ -37,6 +37,8 @@ namespace ig {
 
     class test_client {
         uint64_t previous_total_count = 0;
+        bool metrics_report_console = true;
+        bool metrics_report_influx = true;
         int test_no_consumers = 0;
         int test_no_producers = 0;
         long test_timeout_ms = 6000000;
@@ -67,11 +69,6 @@ namespace ig {
                 test_timeout_ms = atol(test_timeout_ms_str.c_str());
             }
 
-            std::string metrics_report_ms_str = properties_["metrics.report.ms"];
-            if (!metrics_report_ms_str.empty()) {
-                test_timeout_ms = atol(metrics_report_ms_str.c_str());
-            }
-
             std::string message_text_str = properties_["test.message.text"];
             if (!message_text_str.empty()) {
                 message_text = message_text_str;
@@ -85,7 +82,22 @@ namespace ig {
                 queue = queue_str;
             }
 
-            metrics_ = new ig::Metrics(test_no_producers + test_no_consumers + 1);
+            std::string metrics_report_ms_str = properties_["metrics.report.ms"];
+            if (!metrics_report_ms_str.empty()) {
+                test_timeout_ms = atol(metrics_report_ms_str.c_str());
+            }
+
+            std::string metrics_report_console_str = properties_["metrics.report.console"];
+            if (!metrics_report_console_str.empty()) {
+                metrics_report_console = to_bool(metrics_report_console_str);
+            }
+
+            std::string metrics_report_kafka_str = properties_["metrics.report.influx"];
+            if (!metrics_report_kafka_str.empty()) {
+                metrics_report_influx = to_bool(metrics_report_kafka_str);
+            }
+
+            metrics_ = new ig::Metrics(test_no_consumers + 1);
 
             std::string url_str = properties_["connect.url"];
             if (!url_str.empty()) {
@@ -166,14 +178,18 @@ namespace ig {
             uint64_t count = total_count - previous_total_count;
             previous_total_count = total_count;
             double mean_rate = metrics -> request_rates.mean_rate();
-            report_metrics_console(count, mean_rate, snapshot);
-            report_metrics_influxdb_kafka(count, mean_rate, snapshot);
+            if (metrics_report_console)
+                report_metrics_console(count, mean_rate, snapshot);
+            if (metrics_report_influx)
+                report_metrics_influxdb(count, mean_rate, snapshot);
         }
 
         void report_metrics_console(uint64_t count, double mean_rate, ig::Metrics::Histogram::Snapshot &snapshot) {
             OUT(std::cerr << "count= " << count << std::endl);
             OUT(std::cerr << "rate= " <<  mean_rate << std::endl);
             OUT(std::cerr << "mean= " << snapshot.mean << std::endl);
+            OUT(std::cerr << "min= " << snapshot.min << std::endl);
+            OUT(std::cerr << "max= " << snapshot.max << std::endl);
             OUT(std::cerr << "percentile_50th= " << snapshot.median << std::endl);
             OUT(std::cerr << "percentile_75th= " << snapshot.percentile_75th << std::endl);
             OUT(std::cerr << "percentile_90th= " << snapshot.percentile_90th << std::endl);
@@ -183,20 +199,11 @@ namespace ig {
             OUT(std::cerr << "percentile_999th= " << snapshot.percentile_999th << std::endl);
         }
 
-        void report_metrics_influxdb_kafka(uint64_t count, double mean_rate, ig::Metrics::Histogram::Snapshot &snapshot) {
+        void report_metrics_influxdb(uint64_t count, double mean_rate, ig::Metrics::Histogram::Snapshot &snapshot) {
             //TODO
         }
 
-        void splitCSV(std::string &in, std::vector<std::string> &out){
-            std::stringstream ss(in);
 
-            while( ss.good() )
-            {
-                std::string substr;
-                getline( ss, substr, ',' );
-                out.push_back( substr );
-            }
-        }
 
         void reconnect_options(PropertyUtil::PropertyMapT &properties, proton::reconnect_options &ro){
 
@@ -248,6 +255,25 @@ namespace ig {
             proton::reconnect_options ro;
             reconnect_options(properties, ro);
             co.reconnect(ro);
+        }
+
+        bool to_bool(std::string str) {
+            std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+            std::istringstream is(str);
+            bool b;
+            is >> std::boolalpha >> b;
+            return b;
+        }
+
+        void splitCSV(std::string &in, std::vector<std::string> &out){
+            std::stringstream ss(in);
+
+            while( ss.good() )
+            {
+                std::string substr;
+                getline( ss, substr, ',' );
+                out.push_back( substr );
+            }
         }
     };
 }

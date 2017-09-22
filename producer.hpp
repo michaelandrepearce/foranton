@@ -49,9 +49,8 @@ namespace ig {
         }
 
 
-        // Thread safe
         void close() {
-            work_queue_->add([=]() { sender_.close(); });
+            sender_.close();
         }
 
     private:
