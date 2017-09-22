@@ -52,9 +52,9 @@ namespace ig {
 
         ig::connection_factory *connection_factory_;
 
-        PropertyUtil::PropertyMapT properties_;
+        properties_util::properties properties_;
     public:
-        test_client(const PropertyUtil::PropertyMapT properties)
+        test_client(const properties_util::properties properties)
                 : properties_(properties) {
             std::string test_no_consumers_str = properties_["test.consumer.count"];
             if (!test_no_consumers_str.empty()) {
@@ -214,7 +214,7 @@ namespace ig {
 
 
 
-        void reconnect_options(PropertyUtil::PropertyMapT &properties, proton::reconnect_options &ro){
+        void reconnect_options(properties_util::properties &properties, proton::reconnect_options &ro){
 
             std::string ro_failover_urls_csv = properties["reconnect.failover.urls"];
             if (!ro_failover_urls_csv.empty()) {
@@ -244,7 +244,7 @@ namespace ig {
             }
         }
 
-        void connect_options(PropertyUtil::PropertyMapT &properties, proton::connection_options &co){
+        void connect_options(properties_util::properties &properties, proton::connection_options &co){
 
             std::string co_user = properties["connect.user"];
             if (!co_user.empty()) {
@@ -297,8 +297,8 @@ int main(int argc, const char **argv) {
         throw std::invalid_argument("properties must be passed in");
     }
 
-    PropertyUtil::PropertyMapT properties;
-    PropertyUtil::read(filename, properties);
+    properties_util::properties properties;
+    properties_util::read(filename, properties);
 
     ig::test_client test_client(properties);
     test_client.run();

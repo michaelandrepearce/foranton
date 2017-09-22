@@ -9,7 +9,7 @@
 #include <sstream>
 #include <fstream>
 
-void PropertyUtil::read(const char *filename, PropertyMapT &map)
+void properties_util::read(const char *filename, properties &map)
 {
     std::ifstream file(filename);
     if (!file) {
@@ -21,7 +21,7 @@ void PropertyUtil::read(const char *filename, PropertyMapT &map)
     file.close();
 }
 
-void PropertyUtil::read(std::istream &is, PropertyMapT &map)
+void properties_util::read(std::istream &is, properties &map)
 {
     if (!is)
         throw std::runtime_error("unable to read from stream");
@@ -120,14 +120,14 @@ void PropertyUtil::read(std::istream &is, PropertyMapT &map)
     }
 }
 
-void PropertyUtil::write(const char *filename, PropertyMapT &map, const char *header)
+void properties_util::write(const char *filename, properties &map, const char *header)
 {
     std::ofstream file(filename);
     write(file, map, header);
     file.close();
 }
 
-void PropertyUtil::write(std::ostream &os, PropertyMapT &map, const char *header)
+void properties_util::write(std::ostream &os, properties &map, const char *header)
 {
     if (header != NULL)
         os << '#' << header << std::endl;
@@ -168,7 +168,7 @@ void PropertyUtil::write(std::ostream &os, PropertyMapT &map, const char *header
     }
 }
 
-void PropertyUtil::print(std::ostream &os, PropertyMapT &map)
+void properties_util::print(std::ostream &os, properties &map)
 {
     iterator it = map.begin(), end = map.end();
     for (; it != end; ++it)

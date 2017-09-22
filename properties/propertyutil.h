@@ -12,20 +12,20 @@
 #include <iostream>
 #include <unordered_map>
 
-class PropertyUtil
+class properties_util
 {
 
 public:
 
-    typedef std::unordered_map<std::string, std::string> PropertyMapT;
-    typedef PropertyMapT::value_type           value_type;
-    typedef PropertyMapT::iterator             iterator;
+    typedef std::unordered_map<std::string, std::string> properties;
+    typedef properties::value_type           value_type;
+    typedef properties::iterator             iterator;
 
-    static void read(const char *filename, PropertyMapT &map);
-    static void read(std::istream &is, PropertyMapT &map);
-    static void write(const char *filename, PropertyMapT &map, const char *header = NULL);
-    static void write(std::ostream &os, PropertyMapT &map, const char *header = NULL);
-    static void print(std::ostream &os, PropertyMapT &map);
+    static void read(const char *filename, properties &map);
+    static void read(std::istream &is, properties &map);
+    static void write(const char *filename, properties &map, const char *header = NULL);
+    static void write(std::ostream &os, properties &map, const char *header = NULL);
+    static void print(std::ostream &os, properties &map);
 
 private:
 

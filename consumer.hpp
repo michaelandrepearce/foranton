@@ -50,17 +50,17 @@ namespace ig {
             while (messages_.empty()) messages_ready_.wait(l);
             proton::message msg = std::move(messages_.front());
             messages_.pop();
+            if (metrics_) {
+                struct timespec recieve_time;
+                clock_gettime(CLOCK_REALTIME, &recieve_time);
 
+                struct timespec send_time;
+                send_time.tv_sec = proton::get<int64_t>(msg.properties().get("tv_sec"));
+                send_time.tv_nsec = proton::get<int64_t>(msg.properties().get("tv_nsec"));
 
-            struct timespec recieve_time;
-            clock_gettime(CLOCK_REALTIME, &recieve_time);
-
-            struct timespec send_time;
-            send_time.tv_sec = proton::get<int64_t>(msg.properties().get("tv_sec"));
-            send_time.tv_nsec = proton::get<int64_t>(msg.properties().get("tv_nsec"));
-
-            long latency = diff_nanoseconds(recieve_time, send_time);
-            metrics_->record_request(latency);
+                long latency = diff_nanoseconds(recieve_time, send_time);
+                metrics_->record_request(latency);
+            }
             return msg;
         }
 
