@@ -124,6 +124,43 @@ int main(int argc, const char **argv) {
     proton::connection_options co;
     connect_options(properties, co);
 
+    std::string test_no_consumers_str = properties["test.consumer.count"];
+    int test_no_consumers = 0;
+    if (!test_no_consumers_str.empty()) {
+        test_no_consumers = atoi(test_no_consumers_str.c_str());
+    }
+
+    std::string test_no_producers_str = properties["test.producer.count"];
+    int test_no_producers = 0;
+    if (!test_no_producers_str.empty()) {
+        test_no_producers = atoi(test_no_producers_str.c_str());
+    }
+
+    std::string test_timeout_ms_str = properties["test.timeout.ms"];
+    long test_timeout_ms = 6000000;
+    if (!test_timeout_ms_str.empty()) {
+        test_timeout_ms = atol(test_timeout_ms_str.c_str());
+    }
+
+    std::string metrics_report_ms_str = properties["metrics.report.ms"];
+    long metrics_report_ms = 1000000;
+    if (!metrics_report_ms_str.empty()) {
+        test_timeout_ms = atol(metrics_report_ms_str.c_str());
+    }
+
+    std::string message_text = properties["test.message.text"];
+    if (message_text.empty()) {
+        message_text = "hello";
+    }
+    std::string address = properties["test.producer.address"];
+    if (address.empty()) {
+        address = "example";
+    }
+    std::string queue = properties["test.consumer.queue"];
+    if (queue.empty()) {
+        queue = "example";
+    }
+
 
 
     ig::Metrics *metrics = new ig::Metrics(5);
@@ -134,80 +171,73 @@ int main(int argc, const char **argv) {
     proton::container container(connection);
     std::thread container_thread([&]() { container.run(); });
 
-    std::string address = "example";
-    std::string queue = "example";
-
-    auto producer = connection.create_producer(address);
-    auto producer2 = connection.create_producer("example");
-
-    auto consumer = connection.create_consumer(address);
-    auto consumer2 = connection.create_consumer(address);
-
-    int n_messages = 100;
-
     bool run = true;
 
-    std::thread receiver([&]() {
+    std::vector<std::thread*> consumers;
+    for (int i = 0; i < test_no_consumers; i++) {
+        std::thread *receiver = new std::thread([&]() {
+            auto consumer = connection.create_consumer(address);
+            while (run) {
+                auto msg = consumer->receive();
+                //OUT(std::cout << "received \"" << msg.body() << '"' << std::endl);
+            }
+            consumer->close();
+        });
+        consumers.push_back(receiver);
+    }
+
+    std::vector<std::thread*> producers;
+    for (int i = 0; i < test_no_producers; i++) {
+        std::thread *sender = new std::thread([&]() {
+            auto producer = connection.create_producer(address);
+            while (run) {
+                proton::message msg(message_text);
+                producer->send(msg);
+                //OUT(std::cout << "sent \"" << msg.body() << '"' << std::endl);
+            }
+            producer -> close();
+        });
+        producers.push_back(sender);
+    }
+
+
+    std::thread metrics_reporter([&]() {
         while (run) {
-            auto msg = consumer->receive();
-            //OUT(std::cout << "received \"" << msg.body() << '"' << std::endl);
+            usleep(metrics_report_ms);
+            struct ig::Metrics::Histogram::Snapshot snapshot;
+            metrics -> request_latencies.get_snapshot(&snapshot);
+            OUT(std::cerr << "count= " << metrics -> request_rates.count() << std::endl);
+            OUT(std::cerr << "rate= " <<  metrics -> request_rates.mean_rate() << std::endl);
+            OUT(std::cerr << "mean= " << snapshot.mean << std::endl);
+            OUT(std::cerr << "percentile_50th= " << snapshot.median << std::endl);
+            OUT(std::cerr << "percentile_75th= " << snapshot.percentile_75th << std::endl);
+            OUT(std::cerr << "percentile_90th= " << snapshot.percentile_90th << std::endl);
+            OUT(std::cerr << "percentile_95th= " << snapshot.percentile_95th << std::endl);
+            OUT(std::cerr << "percentile_98th= " << snapshot.percentile_98th << std::endl);
+            OUT(std::cerr << "percentile_99th= " << snapshot.percentile_99th << std::endl);
+            OUT(std::cerr << "percentile_999th= " << snapshot.percentile_999th << std::endl);
         }
     });
 
-    std::thread receiver2([&]() {
-        while (run) {
-            auto msg = consumer2->receive();
-            //OUT(std::cout << "received \"" << msg.body() << '"' << std::endl);
-        }
-    });
 
-    std::thread sender([&]() {
-        while (run) {
-            proton::message msg("hello");
-            producer->send(msg);
-            //OUT(std::cout << "sent \"" << msg.body() << '"' << std::endl);
-        }
-    });
-
-    std::thread sender2([&]() {
-        while (run) {
-            proton::message msg("hello");
-            producer2->send(msg);
-            //OUT(std::cout << "sent \"" << msg.body() << '"' << std::endl);
-        }
-    });
-
-    usleep(60000);
+    usleep(test_timeout_ms);
 
     run = false;
 
-    sender.join();
-    sender2.join();
+    for (auto &producer : producers) {
+        producer -> join();
+    }
+    for (auto &consumer : consumers) {
+        consumer -> join();
+    }
 
-    receiver.join();
-    receiver2.join();
+    metrics_reporter.join();
 
-    struct ig::Metrics::Histogram::Snapshot snapshot;
-    metrics -> request_latencies.get_snapshot(&snapshot);
-    double rate = metrics -> request_rates.mean_rate();
-    OUT(std::cerr << "rate= " << rate << std::endl);
-    OUT(std::cerr << "mean= " << snapshot.mean << std::endl);
-    OUT(std::cerr << "percentile_50th= " << snapshot.median << std::endl);
-    OUT(std::cerr << "percentile_75th= " << snapshot.percentile_75th << std::endl);
-    OUT(std::cerr << "percentile_90th= " << snapshot.percentile_90th << std::endl);
-    OUT(std::cerr << "percentile_95th= " << snapshot.percentile_95th << std::endl);
-    OUT(std::cerr << "percentile_98th= " << snapshot.percentile_98th << std::endl);
-    OUT(std::cerr << "percentile_99th= " << snapshot.percentile_99th << std::endl);
-    OUT(std::cerr << "percentile_999th= " << snapshot.percentile_999th << std::endl);
 
 
     connection.close();
     container_thread.join();
     free(metrics);
-    free(consumer);
-    free(consumer2);
-    free(producer);
-    free(producer2);
 
 
 }
