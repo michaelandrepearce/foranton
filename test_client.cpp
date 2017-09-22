@@ -202,11 +202,15 @@ int main(int argc, const char **argv) {
 
 
     std::thread metrics_reporter([&]() {
+        uint64_t previous_total_count = 0;
         while (run) {
             usleep(metrics_report_ms);
             struct ig::Metrics::Histogram::Snapshot snapshot;
             metrics -> request_latencies.get_snapshot(&snapshot);
-            OUT(std::cerr << "count= " << metrics -> request_rates.count() << std::endl);
+            uint64_t total_count = metrics -> request_rates.count();
+            uint64_t count = total_count - previous_total_count;
+            previous_total_count = total_count;
+            OUT(std::cerr << "count= " << count << std::endl);
             OUT(std::cerr << "rate= " <<  metrics -> request_rates.mean_rate() << std::endl);
             OUT(std::cerr << "mean= " << snapshot.mean << std::endl);
             OUT(std::cerr << "percentile_50th= " << snapshot.median << std::endl);
