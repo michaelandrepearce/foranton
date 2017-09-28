@@ -22,7 +22,8 @@ set(INC_FILES ${INC_FILES}
         util/utils.cpp
         metrics/metrics.hpp
         properties/propertyutil.cpp
-        properties/propertyutil.h)
+        properties/propertyutil.h
+        influx_serializer.h)
 
 set(INC_FILES ${INC_FILES}
         connection_factory.hpp
@@ -56,9 +57,11 @@ find_package_handle_standard_args(Libuv "Could NOT find libuv, try to set the pa
 set(IG_INCLUDES ${IG_INCLUDES} ${LIBUV_INCLUDE_DIR})
 set(IG_LIBS ${IG_LIBS} ${LIBUV_LIBRARY})
 
+#
+#file(GLOB LIBRARIES "/usr/local/lib/librdkafka.dylib")
+#file(GLOB LIBRARIES "/usr/local/lib/librdkafka++.dylib")
 
-
-file(GLOB LIBRARIES "/usr/local/lib64/libqpid*.dylib")
+file(GLOB LIBRARIES "/usr/local/lib64/libqpid*.dylib" "/usr/local/lib/librdkafka.dylib" "/usr/local/lib/librdkafka++.dylib")
 
 message("LIBRARIES = ${LIBRARIES}")
 

@@ -306,6 +306,10 @@ public:
     }
 
     void get_snapshot(Snapshot* snapshot) const {
+        get_snapshot(snapshot, false);
+    }
+
+    void get_snapshot(Snapshot* snapshot, bool reset) const {
       ScopedMutex l(&mutex_);
       hdr_histogram* h = histogram_;
       for (size_t i = 0; i < thread_state_->max_threads(); ++i) {
@@ -322,6 +326,14 @@ public:
       snapshot->percentile_98th = hdr_value_at_percentile(h, 98.0);
       snapshot->percentile_99th = hdr_value_at_percentile(h, 99.0);
       snapshot->percentile_999th = hdr_value_at_percentile(h, 99.9);
+      if (reset)
+        hdr_reset(histogram_);
+      if (snapshot->min == INT64_MAX) {
+          snapshot->min = 0;
+      }
+      if (snapshot->mean == INT64_MIN) {
+          snapshot->mean = 0;
+      }
     }
 
   private:

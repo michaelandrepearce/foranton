@@ -1,6 +1,18 @@
-//
-// Created by Michael Pearce on 18/09/2017.
-//
+/*
+  Copyright (c) 2017 IG Group
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
 
 #ifndef consumer_h
 #define consumer_h
@@ -55,8 +67,8 @@ namespace ig {
                 clock_gettime(CLOCK_REALTIME, &recieve_time);
 
                 struct timespec send_time;
-                send_time.tv_sec = proton::get<int64_t>(msg.properties().get("tv_sec"));
-                send_time.tv_nsec = proton::get<int64_t>(msg.properties().get("tv_nsec"));
+                send_time.tv_sec = proton::get<int64_t>(msg.properties().get("MetricsEpochSecond"));
+                send_time.tv_nsec = proton::get<int64_t>(msg.properties().get("MetricsNano"));
 
                 long latency = diff_nanoseconds(recieve_time, send_time);
                 metrics_->record_request(latency);
